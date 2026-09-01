@@ -14,7 +14,9 @@ shift || true
 # --ipc=host: dataloader workers need more shared memory than docker's default
 # hf cache mount: keeps the ~8GB model download across container runs
 # explicit CDI device: --gpus all would also probe the AMD iGPU and fail
+# fixed --name: a second launch refuses to start instead of OOM-fighting the first
 docker run --device nvidia.com/gpu=all --ipc=host --rm -it \
+  --name cuad-axolotl \
   -v "$PWD":/workspace/repo \
   -v "$HOME/.cache/huggingface":/root/.cache/huggingface \
   -w /workspace/repo \
