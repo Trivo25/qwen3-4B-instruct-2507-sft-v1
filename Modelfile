@@ -1,7 +1,6 @@
 # ollama build for the CUAD clause extractor
 # usage: ollama create cuad-qwen3 -f Modelfile
-# adjust FROM to the actual filename export_ollama.py produced (ls outputs/cuad-gguf/)
-FROM ./outputs/cuad-gguf/unsloth.Q8_0.gguf
+FROM ./outputs/cuad-qwen3.Q8_0.gguf
 
 # qwen chat structure, exactly as trained — no <think> scaffolding
 TEMPLATE """{{- range .Messages }}<|im_start|>{{ .Role }}

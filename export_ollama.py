@@ -1,37 +1,39 @@
-"""Merge the CUAD adapter into the base model and export GGUF for ollama.
+"""Merge the CUAD adapter into the base model for ollama export.
 
-Run on the training box (idle GPU, ~8GB VRAM for the bf16 load):
+Plain transformers+peft, deliberately no unsloth import: its loader
+remaps model names to unsloth mirror repos (which broke the bf16 load)
+and patches chat templates. Merging is arithmetic; nothing fancy needed.
+
+Runs on CPU (~10GB RAM, no GPU needed):
   .venv-unsloth/bin/python export_ollama.py
 
-If the gguf step fails (unsloth builds llama.cpp internally for it), the
-merged 16-bit model in outputs/cuad-merged is already saved; convert it
-manually instead:
+Then convert to GGUF with llama.cpp (q8_0: near-lossless — the task needs
+verbatim quotes, don't go lower):
   git clone https://github.com/ggml-org/llama.cpp
-  pip install -r llama.cpp/requirements/requirements-convert_hf_to_gguf.txt
-  python llama.cpp/convert_hf_to_gguf.py outputs/cuad-merged \
-    --outfile outputs/cuad-gguf/cuad-qwen3.Q8_0.gguf --outtype q8_0
+  .venv-unsloth/bin/pip install gguf mistral-common
+  .venv-unsloth/bin/python llama.cpp/convert_hf_to_gguf.py outputs/cuad-merged \
+    --outfile outputs/cuad-qwen3.Q8_0.gguf --outtype q8_0
 """
 
-from unsloth import FastLanguageModel
+import torch
+from peft import PeftModel
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
+BASE = "Qwen/Qwen3-4B-Instruct-2507"
 ADAPTER = "outputs/cuad-unsloth"
+OUT = "outputs/cuad-merged"
 
-# bf16, not 4bit: merging into a 4bit-loaded base would bake its
-# quantization noise into the merged weights
-model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name=ADAPTER,  # adapter_config points at the Qwen base; unsloth loads both
-    max_seq_length=5120,
-    load_in_4bit=False,
-    dtype=None,
+# bf16, not 4bit: merging into a quantized base would bake its noise
+# into the merged weights
+base = AutoModelForCausalLM.from_pretrained(
+    BASE, torch_dtype=torch.bfloat16, device_map="cpu"
 )
+model = PeftModel.from_pretrained(base, ADAPTER)
+model = model.merge_and_unload()  # adds LoRA deltas into the weights
+model.save_pretrained(OUT)
 
-# full standalone model, kept as the source of truth for any later export
-model.save_pretrained_merged(
-    "outputs/cuad-merged", tokenizer, save_method="merged_16bit"
-)
+# tokenizer from the adapter dir: it carries the pinned non-thinking template
+tokenizer = AutoTokenizer.from_pretrained(ADAPTER)
+tokenizer.save_pretrained(OUT)
 
-# q8_0: near-lossless — the task needs verbatim quotes, don't go lower
-model.save_pretrained_gguf(
-    "outputs/cuad-gguf", tokenizer, quantization_method="q8_0"
-)
-print("done — check outputs/cuad-gguf/ for the .gguf file")
+print(f"merged model in {OUT} — now run the gguf conversion (see docstring)")
