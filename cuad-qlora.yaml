@@ -2,9 +2,11 @@
 # run: axolotl train cuad-qlora.yaml
 base_model: Qwen/Qwen3-4B-Instruct-2507
 
-# axolotl's own qwen3 template, NOT tokenizer_default — the latter has a known
-# assistant-turn loss-masking bug (github.com/axolotl-ai-cloud/axolotl/issues/3088)
-chat_template: qwen3
+# the model's own template: Instruct-2507 is the non-thinking variant, and
+# axolotl's built-in `qwen3` template would inject trained empty <think></think>
+# blocks into every answer (that template targets the thinking variants; its
+# masking bug #3088 needs multi-turn thinking markers we don't have)
+chat_template: tokenizer_default
 
 datasets:
   - path: dataset/prepared/train.jsonl
