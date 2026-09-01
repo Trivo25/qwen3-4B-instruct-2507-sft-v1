@@ -28,7 +28,8 @@ fi
 
 # --ipc=host: dataloader workers need more shared memory than docker's default
 # hf cache mount: keeps the ~8GB model download across container runs
-docker run --gpus all --ipc=host --rm -it \
+# explicit CDI device: --gpus all would also probe the AMD iGPU and fail
+docker run --device nvidia.com/gpu=all --ipc=host --rm -it \
   -v "$PWD":/workspace/repo \
   -v "$HOME/.cache/huggingface":/root/.cache/huggingface \
   -w /workspace/repo \
