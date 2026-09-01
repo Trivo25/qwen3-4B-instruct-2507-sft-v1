@@ -8,7 +8,10 @@ LoRA shape, same optimization recipe, so speed/quality are comparable.
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import train_on_responses_only
 
+import json
+
 from datasets import load_dataset
+from huggingface_hub import hf_hub_download
 from trl import SFTTrainer, SFTConfig
 
 MAX_SEQ = 5120
@@ -28,6 +31,13 @@ def build_trainer():
         load_in_4bit=True,
         dtype=None,  # auto-detects bf16 on the 4090
     )
+
+    # unsloth swaps in its generic qwen3 template, which injects empty
+    # <think></think> blocks this non-thinking model never emits; pin the
+    # template from the model repo's own tokenizer_config.json instead
+    cfg = hf_hub_download("Qwen/Qwen3-4B-Instruct-2507", "tokenizer_config.json")
+    with open(cfg) as f:
+        tokenizer.chat_template = json.load(f)["chat_template"]
 
     # same adapter shape as run #1: r16/alpha32 on all linear layers
     model = FastLanguageModel.get_peft_model(

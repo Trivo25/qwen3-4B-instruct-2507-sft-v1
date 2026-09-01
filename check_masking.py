@@ -30,6 +30,14 @@ for i in indices:
     # ground truth: everything after the last assistant header in the
     # rendered text, which is answer + <|im_end|> (+ trailing newline)
     full_text = tokenizer.decode(input_ids)
+
+    # template contamination guard: comparing trained vs rendered text can't
+    # see a poisoned template, so check the rendering itself for think tags
+    if "<think>" in full_text:
+        failures += 1
+        print(f"FAIL idx={i}: <think> found in rendered text")
+        continue
+
     expected = full_text.rsplit("<|im_start|>assistant\n", 1)[-1]
     ok = trained_text.strip() == expected.strip() and trained_text.rstrip().endswith(im_end)
 
