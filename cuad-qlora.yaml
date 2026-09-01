@@ -42,8 +42,10 @@ lora_target_linear: true   # adapters on all linear layers (attn + mlp)
 plugins:
   - axolotl.integrations.cut_cross_entropy.CutCrossEntropyPlugin
 
-micro_batch_size: 1
-gradient_accumulation_steps: 8   # effective batch = 8 packed sequences
+# same effective batch of 8, but 4 sequences per forward pass: the first run
+# showed only 4.4/24 GiB used at micro_batch_size 1, wasting the GPU
+micro_batch_size: 4
+gradient_accumulation_steps: 2
 num_epochs: 2
 learning_rate: 0.0002
 lr_scheduler: cosine
