@@ -1,0 +1,63 @@
+# axolotl SFT+QLoRA config: Qwen3-4B-Instruct-2507 on CUAD clause extraction
+# run: axolotl train cuad-qlora.yaml
+base_model: Qwen/Qwen3-4B-Instruct-2507
+
+# axolotl's own qwen3 template, NOT tokenizer_default — the latter has a known
+# assistant-turn loss-masking bug (github.com/axolotl-ai-cloud/axolotl/issues/3088)
+chat_template: qwen3
+
+datasets:
+  - path: dataset/prepared/train.jsonl
+    type: chat_template
+    field_messages: messages       # our rows are {"messages": [{role, content}, ...]}
+    roles_to_train: ["assistant"]  # loss only on the answer tokens
+    train_on_eos: turn             # also learn the <|im_end|> that closes the answer
+# held-out contracts for eval loss; val_set_size must be 0 when this is set
+test_datasets:
+  - path: dataset/prepared/val.jsonl
+    type: chat_template
+    split: train
+    field_messages: messages
+    roles_to_train: ["assistant"]
+    train_on_eos: turn
+val_set_size: 0.0
+
+# p99 example is ~3.1k est tokens, worst case ~4.2k; 5120 leaves margin so no
+# answer ever gets truncated
+sequence_len: 5120
+sample_packing: true       # pack several short examples per sequence: big speedup
+eval_sample_packing: true
+pad_to_sequence_len: true
+
+# QLoRA: 4-bit frozen base weights + trainable low-rank adapters
+load_in_4bit: true
+adapter: qlora
+lora_r: 16                 # adapter rank; 16 is the usual starting point
+lora_alpha: 32             # scaling, convention alpha = 2*r
+lora_target_linear: true   # adapters on all linear layers (attn + mlp)
+
+# cuts logit-layer memory; Qwen's 151k vocab makes this worthwhile
+plugins:
+  - axolotl.integrations.cut_cross_entropy.CutCrossEntropyPlugin
+
+micro_batch_size: 1
+gradient_accumulation_steps: 8   # effective batch = 8 packed sequences
+num_epochs: 2
+learning_rate: 0.0002
+lr_scheduler: cosine
+warmup_ratio: 0.03
+optimizer: adamw_torch_4bit
+
+bf16: auto
+tf32: true
+attn_implementation: flash_attention_2   # fall back to sdpa if flash-attn won't build
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+
+output_dir: outputs/cuad-qlora
+dataset_prepared_path: last_run_prepared
+logging_steps: 5
+evals_per_epoch: 2
+saves_per_epoch: 1
+weight_decay: 0.0
