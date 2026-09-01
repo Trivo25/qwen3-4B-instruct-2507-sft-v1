@@ -8,8 +8,8 @@ cd "$(dirname "$0")"
 
 VENV=.venv-unsloth
 
-# dataset/prepared is gitignored; rebuild is deterministic (seeded)
-[ -f dataset/prepared/train.jsonl ] || python3 prepare_data.py
+# prepared data is gitignored; rebuild is deterministic (seeded)
+[ -f dataset/prepared-v3/train.jsonl ] || python3 prepare_data_v3.py
 
 case "${1:-train}" in
   setup)

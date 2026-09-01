@@ -1,1 +1,6 @@
 dataset/prepared
+dataset/prepared-v3
+outputs/
+last_run_prepared/
+unsloth_compiled_cache/
+.venv-unsloth/

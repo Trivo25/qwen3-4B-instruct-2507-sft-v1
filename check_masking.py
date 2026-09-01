@@ -8,6 +8,7 @@ Equivalent of axolotl's `preprocess --debug` check for run #1.
 
 import random
 
+from prepare_data_v3 import NO_ANSWER
 from train_unsloth import build_trainer
 
 N_SAMPLES = 30
@@ -48,7 +49,7 @@ for i in indices:
         print(f"  expected: {expected!r}")
 
     # show one worked example of each kind for eyeballing
-    kind = "negative" if expected.strip() == f"None{im_end}" else "positive"
+    kind = "negative" if expected.strip().startswith(NO_ANSWER) else "positive"
     if ok and not shown[kind]:
         shown[kind] = True
         print(f"--- {kind} example idx={i} ---")

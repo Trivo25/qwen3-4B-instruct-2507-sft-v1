@@ -15,7 +15,8 @@ from huggingface_hub import hf_hub_download
 from trl import SFTTrainer, SFTConfig
 
 MAX_SEQ = 5120
-OUT = "outputs/cuad-unsloth"
+DATA = "dataset/prepared-v3"  # v3: numbered passages + [n]-cited quotes
+OUT = "outputs/cuad-unsloth-v3"
 
 
 def build_trainer():
@@ -65,8 +66,8 @@ def build_trainer():
     data = load_dataset(
         "json",
         data_files={
-            "train": "dataset/prepared/train.jsonl",
-            "eval": "dataset/prepared/val.jsonl",
+            "train": f"{DATA}/train.jsonl",
+            "eval": f"{DATA}/val.jsonl",
         },
     )
     data = data.map(render, remove_columns=["messages"])
