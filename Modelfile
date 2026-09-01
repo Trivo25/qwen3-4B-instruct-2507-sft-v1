@@ -1,0 +1,20 @@
+# ollama build for the CUAD clause extractor
+# usage: ollama create cuad-qwen3 -f Modelfile
+# adjust FROM to the actual filename export_ollama.py produced (ls outputs/cuad-gguf/)
+FROM ./outputs/cuad-gguf/unsloth.Q8_0.gguf
+
+# qwen chat structure, exactly as trained — no <think> scaffolding
+TEMPLATE """{{- range .Messages }}<|im_start|>{{ .Role }}
+{{ .Content }}<|im_end|>
+{{ end }}<|im_start|>assistant
+"""
+
+# the training system prompt, verbatim from prepare_data.py
+SYSTEM """You are a legal contract analyst. You are given an excerpt from a commercial contract and one review question. Quote every part of the excerpt that answers the question, verbatim, one passage per line. If nothing in the excerpt answers the question, reply exactly: None"""
+
+PARAMETER stop <|im_end|>
+# extraction wants determinism
+PARAMETER temperature 0
+# ollama's default context is far too small for our ~3.5k-token prompts and
+# would silently truncate them
+PARAMETER num_ctx 6144
